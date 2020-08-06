@@ -24,27 +24,49 @@ const urlDatabase = {
   "9sm5xK": "http://www.google.com"
 };
 
+const users = { 
+  "userRandomID": {
+    id: "userRandomID", 
+    email: "user@example.com", 
+    password: "purple-monkey-dinosaur"
+  },
+ "user2RandomID": {
+    id: "user2RandomID", 
+    email: "user2@example.com", 
+    password: "dishwasher-funk"
+  }
+}
+
 app.get("/", (req, res) => {
   res.send("Hello!");
 });
 
 app.get("/urls", (req, res) => {
   let templateVars = { urls: urlDatabase,
-    username: req.cookies["username"],
+    user: users[req.cookies["user_id"]],
     // ... any other vars
   };
+  //console.log(templateVars);
   res.render("urls_index", templateVars);
 });
 
 app.post("/urls", (req, res) => {
-  console.log(req.body);  // Log the POST request body to the console
+  //console.log(req.body);  // Log the POST request body to the console
+  let templateVars = { urls: urlDatabase,
+    user: users[req.cookies["user_id"]],
+    // ... any other vars
+  };
   const newShortform = generateRandomString();
   urlDatabase[newShortform] = req.body["longURL"];
   res.redirect(`/urls/${newShortform}`);
 });
 
 app.get("/urls/new", (req, res) => {
-  res.render("urls_new");
+  let templateVars = { urls: urlDatabase,
+    user: users[req.cookies["user_id"]],
+    // ... any other vars
+  };
+  res.render("urls_new",templateVars);
 });
 
 app.get("/urls.json", (req, res) => {
@@ -65,6 +87,14 @@ app.get("/u/:shortURL", (req, res) => {
   res.redirect(longURL);
 });
 
+app.get("/register", (req, res) => {
+  res.render("registration"); 
+});
+
+app.get("/login", (req, res) => {
+  res.render("login"); 
+});
+
 app.post("/urls/:shortURL/delete", (req, res) => {
   delete urlDatabase[req.params.shortURL];
   res.redirect("/urls");
@@ -81,10 +111,38 @@ app.post("/login", (req,res) => {
 })
 
 app.post("/logout", (req,res) => {
-  res.cookie("username","")
+  //res.clearCookie("username")
+  //console.log("hi");
+  console.log(req.cookies.user_id);
+  res.cookie("user_id",null);
   res.redirect("/urls")
 })
+
+const emailChecker = function(email, user) {
+  for (let id in user) {
+    if (user[id].email === email) {
+      return true;
+    }
+  }
+  return false;
+}
   
+app.post("/register", (req, res) => {
+  if (req.body.email === "" || req.body.password === "") {
+    res.status(400).send("Error 400: Missing username &/or password");
+  } else if (emailChecker(req.body.email,users)) {
+    res.status(400).send("Error 400: Email already exists");
+  } else {
+    const newID = generateRandomString();
+    users[newID] = {
+    id: newID,
+    email: req.body.email,
+    password: req.body.password
+  };
+  res.cookie("user_id",newID)
+  res.redirect("/urls")
+  }
+});
 
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
