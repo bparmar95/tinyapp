@@ -78,7 +78,8 @@ app.get("/hello", (req, res) => {
 });
 
 app.get("/urls/:shortURL", (req, res) => {
-  let templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL] };
+  let templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL], 
+    user: users[req.cookies["user_id"]]};
   res.render("urls_show", templateVars); 
 });
 
@@ -106,17 +107,42 @@ app.post("/urls/:shortURL", (req,res) => {
 })
 
 app.post("/login", (req,res) => {
-  res.cookie("username",req.body.username)
-  res.redirect("/urls")
+  if (!emailChecker(req.body.email,users)) {
+    res.status(403).send("Error 403: that email isn't registered")
+  } else if (emailChecker(req.body.email,users)) {
+    for (let id in users) {
+      if (users[id].email === req.body.email) {
+        if (users[id].password !== req.body.password) {
+          res.status(403).send("Error 403: Password doesn't match email")
+        } else {
+          //res.redirect("/urls")
+         // console.log(req.body.email);
+         const fullUser = userIDChecker(req.body.email,users)
+          res.cookie("user_id",fullUser.id)
+          res.redirect("/urls")
+        }
+  }
+ }
+}
 })
 
 app.post("/logout", (req,res) => {
   //res.clearCookie("username")
   //console.log("hi");
-  console.log(req.cookies.user_id);
+  //console.log(req.cookies.user_id);
   res.cookie("user_id",null);
   res.redirect("/urls")
 })
+
+const userIDChecker = function(email,user) {
+  if (emailChecker(email,user)) {
+    for (let id in user) {
+      if (user[id].email === email) {
+        return user[id];
+      }
+  }
+}
+}
 
 const emailChecker = function(email, user) {
   for (let id in user) {
